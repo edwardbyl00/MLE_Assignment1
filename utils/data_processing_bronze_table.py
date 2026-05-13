@@ -33,3 +33,24 @@ def process_bronze_table(snapshot_date_str, bronze_lms_directory, spark):
     print('saved to:', filepath)
 
     return df
+
+def process_bronze_features(snapshot_date_str, bronze_feature_directory, spark):
+
+    snapshot_date = datetime.strptime(snapshot_date_str, "%Y-%m-%d")
+
+    raw_feature_data = {
+        "clickstream": "data/feature_clickstream.csv",
+        "attributes": "data/features_attributes.csv",
+        "financials": "data/features_financials.csv"
+    }
+
+    for feature_name, file_path in raw_feature_data.items():
+        df = spark.read.csv(file_path, header=True, inferSchema=True).filter(col('snapshot_date') == snapshot_date)
+        print(f"{feature_name} - {snapshot_date_str} row count:", df.count())
+        
+        partition_name = f"bronze_{feature_name}_" + snapshot_date_str.replace('-','_') + '.csv'
+        filepath = bronze_feature_directory + partition_name
+        df.toPandas().to_csv(filepath, index=False)
+        print('saved to:', filepath)
+
+        return df

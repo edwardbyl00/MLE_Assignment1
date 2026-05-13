@@ -60,7 +60,7 @@ def generate_first_of_month_dates(start_date_str, end_date_str):
 dates_str_lst = generate_first_of_month_dates(start_date_str, end_date_str)
 print(dates_str_lst)
 
-# create bronze datalake
+# create bronze lms datalake
 bronze_lms_directory = "datamart/bronze/lms/"
 
 if not os.path.exists(bronze_lms_directory):
@@ -69,6 +69,19 @@ if not os.path.exists(bronze_lms_directory):
 # run bronze backfill
 for date_str in dates_str_lst:
     utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_lms_directory, spark)
+
+# create bronze feature datalake
+bronze_feature_directory = "datamart/bronze/features/"
+
+if not os.path.exists(bronze_feature_directory):
+    os.makedirs(bronze_feature_directory)
+
+for date_str in dates_str_lst:
+    utils.data_processing_bronze_table.process_bronze_features(
+        date_str,
+        bronze_feature_directory,
+        spark
+    )
 
 
 # create silver datalake
