@@ -1,4 +1,3 @@
-import os
 import glob
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -16,8 +15,6 @@ from pyspark.sql.types import StringType, IntegerType, FloatType, DateType
 
 
 def process_silver_table(snapshot_date_str, bronze_lms_directory, silver_loan_daily_directory, spark):
-    # prepare arguments
-    snapshot_date = datetime.strptime(snapshot_date_str, "%Y-%m-%d")
     
     # connect to bronze table
     partition_name = "bronze_loan_daily_" + snapshot_date_str.replace('-','_') + '.csv'
@@ -50,7 +47,7 @@ def process_silver_table(snapshot_date_str, bronze_lms_directory, silver_loan_da
     # augment data: add days past due
     df = df.withColumn("installments_missed", F.ceil(col("overdue_amt") / col("due_amt")).cast(IntegerType())).fillna(0)
     df = df.withColumn("first_missed_date", F.when(col("installments_missed") > 0, F.add_months(col("snapshot_date"), -1 * col("installments_missed"))).cast(DateType()))
-    df = df.withColumn("dpd", F.when(col("overdue_amt") > 0.0, F.datediff(col("snapshot_date"), col("first_missed_date"))).otherwise(0).cast(IntegerType()))
+    df = df.withColumn("dpd", F.when(col("overdue_amt") > 0.0, F.datediff(col("snapshot_date"),col("first_missed_date"))).otherwise(0).cast(IntegerType()))
 
     # save silver table - IRL connect to database to write
     partition_name = "silver_loan_daily_" + snapshot_date_str.replace('-','_') + '.parquet'
@@ -71,6 +68,8 @@ def process_silver_features(snapshot_date_str, bronze_feature_directory, silver_
         "attributes": f"{bronze_feature_directory}bronze_attributes_{snapshot_date_clean}.csv",
         "financials": f"{bronze_feature_directory}bronze_financials_{snapshot_date_clean}.csv"
     }
+
+    silver_dfs = {}
 
     for feature_name, file_path in bronze_files.items():
         print(f"Processing silver feature table: {feature_name} - {snapshot_date_str}")
@@ -132,19 +131,36 @@ def process_silver_features(snapshot_date_str, bronze_feature_directory, silver_
                 if column_name in df.columns:
                     df = df.withColumn(column_name, col(column_name).cast(StringType()))
 
-    if "snapshot_date" in df.columns:
-        df = df.withColumn("snapshot_date", F.to_date(col("snapshot_date")))
+        if feature_name == "attributes":
+            if "Age" in df.columns:
+                df = df.withColumn("Age",F.regexp_replace(col("Age").cast("string"), "_", "").cast(IntegerType()))
+
+                df = df.withColumn(
+                    "Age",
+                    F.when((col("Age") >= 0) & (col("Age") <= 100), col("Age")).otherwise(None)
+                )
+        
+            string_columns = [
+                "Customer_ID",
+                "Name",
+                "SSN",
+                "Occupation"
+            ]
+        
+            for column_name in string_columns:
+                if column_name in df.columns:
+                    df = df.withColumn(column_name, col(column_name).cast(StringType()))
 
         if "snapshot_date" in df.columns:
-            df = df.withColumn("snapshot_date", to_date(col("snapshot_date")))
-
+            df = df.withColumn("snapshot_date", F.to_date(col("snapshot_date")))
+    
         output_path = f"{silver_feature_directory}silver_{feature_name}_{snapshot_date_clean}.parquet"
-
-        (
-            df.write
-            .mode("overwrite")
-            .parquet(output_path)
-        )
+        
+        df.write.mode("overwrite").parquet(output_path)
 
         print(f"saved to: {output_path}")
+
+        silver_dfs[feature_name] = df
+
+    return silver_dfs
         

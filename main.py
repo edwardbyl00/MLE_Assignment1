@@ -1,17 +1,6 @@
 import os
-import glob
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
-import random
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
-import pprint
+from datetime import datetime
 import pyspark
-import pyspark.sql.functions as F
-
-from pyspark.sql.functions import col, to_date
-from pyspark.sql.types import StringType, IntegerType, FloatType, DateType
 
 import utils.data_processing_bronze_table
 import utils.data_processing_silver_table

@@ -53,4 +53,4 @@ def process_bronze_features(snapshot_date_str, bronze_feature_directory, spark):
         df.toPandas().to_csv(filepath, index=False)
         print('saved to:', filepath)
 
-        return df
+    return df
