@@ -131,6 +131,34 @@ def process_silver_features(snapshot_date_str, bronze_feature_directory, silver_
                 if column_name in df.columns:
                     df = df.withColumn(column_name, col(column_name).cast(StringType()))
 
+            df = df.withColumn(
+                "Num_Bank_Accounts",
+                F.when((col("Num_Bank_Accounts") >= 0) & (col("Num_Bank_Accounts") <= 15), col("Num_Bank_Accounts")).otherwise(None)
+            )
+            
+            df = df.withColumn(
+                "Num_Credit_Card",
+                F.when((col("Num_Credit_Card") >= 0) & (col("Num_Credit_Card") <= 15), col("Num_Credit_Card")).otherwise(None)
+            )
+
+            df = df.withColumn(
+                "Interest_Rate",
+                F.when((col("Interest_Rate") >= 0) & (col("Interest_Rate") <= 100), col("Interest_Rate")).otherwise(None)
+            )
+
+            df = df.withColumn(
+                "Delay_from_due_date",
+                F.when(col("Delay_from_due_date") >= 0, col("Delay_from_due_date"))
+                 .otherwise(None)
+            )
+            
+            df = df.withColumn(
+                "Num_Credit_Inquiries",
+                F.when(col("Num_Credit_Inquiries") >= 0, col("Num_Credit_Inquiries"))
+                 .otherwise(None)
+            )
+                
+
         if feature_name == "attributes":
             if "Age" in df.columns:
                 df = df.withColumn("Age",F.regexp_replace(col("Age").cast("string"), "_", "").cast(IntegerType()))
